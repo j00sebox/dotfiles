@@ -341,7 +341,23 @@ require("lazy").setup({
 			capabilities = vim.tbl_deep_extend("force", capabilities, require("cmp_nvim_lsp").default_capabilities())
 
 			local servers = {
-				clangd = {},
+				clangd = {
+					capabilities = capabilities, -- Use enhanced capabilities
+					on_attach = function(client, bufnr)
+						-- Disable formatting for clangd if needed (to use another formatter like clang-format)
+						client.server_capabilities.documentFormattingProvider = false
+
+						-- Keymaps for LSP actions
+						local opts = { noremap = true, silent = true, buffer = bufnr }
+						vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+						vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+					end,
+					settings = {
+						clangd = {
+							fallbackFlags = { "-std=c++20" }, -- Default flags for C++ projects
+						},
+					},
+				},
 				pyright = {},
 				rust_analyzer = {},
 
@@ -406,8 +422,17 @@ require("lazy").setup({
 					lsp_format = lsp_format_opt,
 				}
 			end,
+			formatters = {
+				["clang-format"] = {
+					command = "clang-format",
+					args = {
+						"--style={BasedOnStyle: LLVM, BreakBeforeBraces: Allman, ColumnLimit: 0, AllowAllParametersOfDeclarationOnNextLine: false, PointerAlignment: Left, ReferenceAlignment: Left }",
+					},
+				},
+			},
 			formatters_by_ft = {
 				lua = { "stylua" },
+				cpp = { "clangd", "clang-format" },
 			},
 		},
 	},
