@@ -59,6 +59,12 @@ vim.keymap.set("n", "k", "j", { noremap = true, silent = true })
 vim.keymap.set("v", "j", "k", { noremap = true, silent = true })
 vim.keymap.set("v", "k", "j", { noremap = true, silent = true })
 
+-- Indent with Tab in visual mode
+vim.keymap.set("v", "<Tab>", ">gv", { noremap = true, silent = true })
+
+-- Outdent with Shift-Tab in visual mode
+vim.keymap.set("v", "<S-Tab>", "<gv", { noremap = true, silent = true })
+
 -- Clear highlights on search when pressing <Esc> in normal mode
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 
@@ -73,6 +79,28 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	group = vim.api.nvim_create_augroup("kickstart-highlight-yank", { clear = true }),
 	callback = function()
 		vim.highlight.on_yank()
+	end,
+})
+
+-- Quits Nvim-Tree if it's the last thing open
+vim.api.nvim_create_autocmd("QuitPre", {
+	callback = function()
+		local wins = vim.api.nvim_list_wins()
+		local valid_wins = 0
+
+		for _, win in ipairs(wins) do
+			local buf = vim.api.nvim_win_get_buf(win)
+			local ft = vim.bo[buf].filetype
+			-- Count only non-NvimTree windows
+			if ft ~= "NvimTree" then
+				valid_wins = valid_wins + 1
+			end
+		end
+
+		-- If all open windows are NvimTree, quit Neovim
+		if valid_wins == 0 then
+			vim.cmd("quit")
+		end
 	end,
 })
 
@@ -595,6 +623,53 @@ require("lazy").setup({
 		auto_display = true,
 	},
 	{ "Vaisakhkm2625/hologram-math-preview.nvim" },
+	{
+		"nvim-tree/nvim-tree.lua",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		config = function()
+			require("nvim-tree").setup({
+				diagnostics = {
+					enable = true,
+					show_on_dirs = true,
+					debounce_delay = 50,
+					severity = {
+						min = vim.diagnostic.severity.WARN,
+						max = vim.diagnostic.severity.ERROR,
+					},
+				},
+				renderer = {
+					icons = {
+						show = {
+							git = true,
+							diagnostics = true,
+						},
+						glyphs = {
+							diagnostics = {
+								hint = "",
+								info = "",
+								warning = "",
+								error = "",
+							},
+						},
+					},
+				},
+			})
+			vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<leader>f", ":NvimTreeFocus<CR>", { noremap = true, silent = true })
+			vim.keymap.set("n", "<leader>t", function()
+				local api = require("nvim-tree.api")
+				local tree_view = require("nvim-tree.view")
+
+				if tree_view.is_visible() then
+					-- If tree is open and focused, switch to last used window
+					vim.cmd("wincmd p")
+				else
+					-- Otherwise open tree and focus it
+					api.tree.open()
+				end
+			end, { noremap = true, silent = true })
+		end,
+	},
 }, {
 	ui = {
 		icons = vim.g.have_nerd_font and {} or {
